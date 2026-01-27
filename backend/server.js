@@ -1,15 +1,19 @@
 const dotenv = require("dotenv");
-const express = require("express");
 dotenv.config();
+const express = require("express");
+const connectDB = require("./utils/database.util");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
-app.use((req, res, next) => {
+app.get("/", (req, res, next) => {
   res.send("hello from server");
 });
 
-app.listen(PORT, () => {
-  console.log(`server is running on http://localhost:${PORT}/`);
+connectDB().then(() => {
+  console.log("Database connected, server is starting...");
+  app.listen(PORT, () => {
+    console.log(`server is running on http://localhost:${PORT}/`);
+  });
 });
