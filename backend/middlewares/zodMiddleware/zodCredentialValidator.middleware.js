@@ -5,11 +5,12 @@ Parameterized middleware
 */
 const zodyCredentialValidator = (zodSchema) => async (req, res, next) => {
   try {
-    const parsedData = await schema.parseAsync(req.body);
+    const parsedData = await zodSchema.parseAsync(req.body);
     req.body = parsedData;
     next();
   } catch (error) {
     console.log(error);
+    res.status(400).json({ error: error.message });
   }
 };
 
