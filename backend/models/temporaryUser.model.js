@@ -30,17 +30,18 @@ const temporaryUserSchema = new mongoose.Schema(
   },
 );
 
-temporaryUserSchema.pre("save", async function (next) {
+temporaryUserSchema.pre("save", async function () {
   try {
-    if (!this.isModified("password")) return next();
+    const tempData = this;
+    if (!tempData.isModified("password")) return;
 
     const saltRounds = await bcrypt.genSalt(10);
-    const hashed_password = await bcrypt.hash(this.password, saltRounds);
-    this.password = hashed_password;
-    next();
+    const hashed_password = await bcrypt.hash(tempData.password, saltRounds);
+    tempData.password = hashed_password;
+    return;
   } catch (error) {
     console.error("password could not be hashed");
-    next(error);
+    return;
   }
 });
 

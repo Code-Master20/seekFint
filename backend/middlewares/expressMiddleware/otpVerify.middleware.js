@@ -23,7 +23,6 @@ const otpVerify = async (req, res, next) => {
 
     // attach temp user for next controller
     req.tempUser = tempUser;
-
     next(); // ✅ HERE next() is CORRECT
   } catch (error) {
     return res.status(500).json({ message: "OTP verification failed" });
