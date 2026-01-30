@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
@@ -44,6 +45,19 @@ userSchema.methods.generateLogTrackTkn = function () {
       expiresIn: process.env.JWT_LOGGED_TRACK_TKN_EXPIRY, // e.g. "30d"
     },
   );
+};
+
+userSchema.methods.comparePassword = async function (enteredPassword) {
+  try {
+    const passwordCompared = await bcrypt.compare(
+      enteredPassword,
+      this.password,
+    );
+    return passwordCompared;
+  } catch (error) {
+    console.log("password could not be compared");
+    throw error;
+  }
 };
 
 const User = mongoose.model("User", userSchema);

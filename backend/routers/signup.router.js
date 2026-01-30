@@ -1,28 +1,21 @@
+// routers/signup.router.js
 const express = require("express");
 const router = express.Router();
-const {
-  signUpZodSchema,
-} = require("../utils/credentialValidatorSchema.util.js");
-const zodyCredentialValidator = require("../middlewares/zodMiddleware/zodCredentialValidator.middleware.js");
-const signUp = require("../controllers/signup.controller.js");
-const sendingOtpToEmail = require("../middlewares/expressMiddleware/sendingOtpToEmail.middleware.js");
-const otpVerify = require("../middlewares/expressMiddleware/otpVerify.middleware.js");
+
+const { signUpZodSchema } = require("../utils/credentialValidatorSchema.util");
+
+const zodyCredentialValidator = require("../middlewares/zodMiddleware/zodCredentialValidator.middleware");
+
+const signUp = require("../controllers/signup.controller");
+const sendingOtpToEmail = require("../middlewares/expressMiddleware/sendingOtpToEmail.middleware");
+const otpVerify = require("../middlewares/expressMiddleware/otpVerify.middleware");
 
 router.post(
   "/sign-up",
   zodyCredentialValidator(signUpZodSchema),
-  sendingOtpToEmail,
+  sendingOtpToEmail.sendingOtpForSignUp,
 );
 
-router.post("/verify-otp", otpVerify, signUp);
-
-// router
-//   .route("/sign-up")
-//   .post(
-//     zodyCredentialValidator(signUpZodSchema),
-//     sendingOtpToEmail,
-//     otpVerify,
-//     signUp,
-//   );
+router.post("/sign-up/verify-otp", otpVerify, signUp);
 
 module.exports = router;

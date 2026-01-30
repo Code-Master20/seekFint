@@ -1,17 +1,22 @@
+// middlewares/expressMiddleware/otpVerify.middleware.js
 const bcrypt = require("bcryptjs");
-const EmailOtp = require("../../models/emailOtp.model.js");
-const TemporaryUser = require("../../models/temporaryUser.model.js");
+const EmailOtp = require("../../models/emailOtp.model");
+const TemporaryUser = require("../../models/temporaryUser.model");
 
 const otpVerify = async (req, res, next) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, purpose } = req.body;
 
-    const otpRecord = await EmailOtp.findOne({ email });
+    if (!purpose) {
+      return res.status(400).json({ message: "OTP purpose is required" });
+    }
+
+    const otpRecord = await EmailOtp.findOne({ email, purpose });
     if (!otpRecord) {
       return res.status(400).json({ message: "OTP expired or invalid" });
     }
 
-    const isValid = await bcrypt.compare(otp, otpRecord.otp);
+    const isValid = await EmailOtp.compareOtp(otp);
     if (!isValid) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
@@ -21,10 +26,12 @@ const otpVerify = async (req, res, next) => {
       return res.status(400).json({ message: "No pending signup found" });
     }
 
-    // attach temp user for next controller
+    await EmailOtp.deleteMany({ email, purpose });
+
     req.tempUser = tempUser;
-    next(); // ✅ HERE next() is CORRECT
+    next();
   } catch (error) {
+    console.error("otpVerify error:", error);
     return res.status(500).json({ message: "OTP verification failed" });
   }
 };

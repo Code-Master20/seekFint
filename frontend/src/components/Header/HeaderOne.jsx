@@ -24,15 +24,17 @@ export const HeaderOne = () => {
   return (
     <header className={styles["header-container"]}>
       <nav className={styles["header-first-child"]}>
-        <section>
-          <FaRegFileLines />
-          {/* <FaUsersBetweenLines /> */}
-          <img src={classMate} alt="" />
-          <section>
+        <section className={styles["header-content-container"]}>
+          <article className={styles["dashboard-logo"]}>
+            <FaRegFileLines />
+            {/* <FaUsersBetweenLines /> */}
+            <img src={classMate} alt="" width="120px" height="50px" />
+          </article>
+          <article className={styles["create-search-sms"]}>
             <MdAddCircleOutline />
             <FiSearch />
             <RiMessengerLine />
-          </section>
+          </article>
         </section>
         <section></section>
       </nav>

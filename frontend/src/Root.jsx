@@ -9,7 +9,7 @@ function Root() {
     <div>
       <HeaderOne />
       <HeaderTwo />
-      {/* <Outlet /> */}
+      <Outlet />
     </div>
   );
 }

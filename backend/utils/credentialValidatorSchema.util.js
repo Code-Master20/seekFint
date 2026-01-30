@@ -1,14 +1,7 @@
 const { z } = require("zod");
 const validator = require("validator");
 
-const signUpZodSchema = z.object({
-  username: z
-    .string({ required_error: "username is required" })
-    .trim()
-    .nonempty({ message: "name can't be empty" })
-    .min(3, { message: "must be of atleast 3 chars long" })
-    .max(30, { message: "must not exceed 30 characters" }),
-
+const logInZodSchema = z.object({
   email: z
     .string({ required_error: "email is required" })
     .trim()
@@ -36,4 +29,13 @@ const signUpZodSchema = z.object({
     ),
 });
 
-module.exports = { signUpZodSchema };
+const signUpZodSchema = logInZodSchema.extend({
+  username: z
+    .string({ required_error: "username is required" })
+    .trim()
+    .nonempty({ message: "name can't be empty" })
+    .min(3, { message: "must be at least 3 characters long" })
+    .max(30, { message: "must not exceed 30 characters" }),
+});
+
+module.exports = { signUpZodSchema, logInZodSchema };

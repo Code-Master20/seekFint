@@ -1,35 +1,29 @@
-const otpSender = require("../../utils/otpSender.js");
-const EmailOtp = require("../../models/emailOtp.model.js");
-const TemporaryUser = require("../../models/temporaryUser.model.js");
+// middlewares/expressMiddleware/sendingOtpToEmail.middleware.js
+const TemporaryUser = require("../../models/temporaryUser.model");
+const sendOtp = require("../../services/sendOtp.service");
+const User = require("../../models/user.model");
 
-const sendingOtpToEmail = async (req, res, next) => {
+// ================= SIGN UP OTP =================
+const sendingOtpForSignUp = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    let otp = "";
-    for (let i = 0; i < 8; i++) {
-      const randomNum = Math.floor(Math.random() * 10); //[0,9]
-      otp += randomNum;
-    }
-    // const otp = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join(""); one line code for otp generation
-    await EmailOtp.deleteMany({ email });
-    await EmailOtp.create({ email, otp });
+    await TemporaryUser.deleteMany({ email });
 
-    await otpSender({
-      to: email,
-      subject: "email verification code",
-      text: `Welcome to the world of ClassMate`,
-      html: `
-        <h3>Your verification code</h3>
-        <p>${otp}</p>
-      `,
+    await TemporaryUser.create({
+      username,
+      email,
+      password,
     });
 
-    await TemporaryUser.create({ username, email, password });
+    await sendOtp({
+      email,
+      purpose: "signup",
+    });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: `verification code sent successfully to ${email}`,
+      message: `Verification code sent to ${email}`,
     });
   } catch (error) {
     console.error("sendingOtpToEmail error:", error);
@@ -40,4 +34,40 @@ const sendingOtpToEmail = async (req, res, next) => {
   }
 };
 
-module.exports = sendingOtpToEmail;
+// ================= LOGIN OTP =================
+const sendingOtpForLogIn = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const userExisted = await User.findOne({ email });
+    if (!userExisted)
+      return res
+        .status(404)
+        .json({ success: false, message: "account not found" });
+
+    const isMatch = await User.comparePassword(password);
+    if (!isMatch)
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+
+    await sendOtp({
+      email,
+      purpose: "login",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Verification code sent to ${email}`,
+    });
+  } catch (error) {
+    console.error("sendingOtpForLogIn error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send verification code",
+    });
+  }
+};
+
+module.exports = { sendingOtpForSignUp, sendingOtpForLogIn };

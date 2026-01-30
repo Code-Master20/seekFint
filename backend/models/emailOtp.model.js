@@ -1,3 +1,4 @@
+// models/emailOtp.model.js
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
@@ -6,40 +7,50 @@ const emailOtpSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
+      lowercase: true,
+      trim: true,
       index: true,
     },
     otp: {
       type: String,
       required: true,
     },
+    purpose: {
+      type: String,
+      required: true,
+      enum: ["signup", "login", "reset-password"],
+    },
     expiresAt: {
       type: Date,
-      default: () => Date.now() + 5 * 60 * 1000, // 5 minutes
+      default: () => Date.now() + 5 * 60 * 1000,
     },
   },
   { timestamps: true },
 );
 
+emailOtpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 emailOtpSchema.pre("save", async function () {
   try {
-    const email_otp = this;
-    if (!email_otp.isModified("otp")) {
-      return;
-    }
+    if (!this.isModified("otp")) return;
     const saltRounds = await bcrypt.genSalt(10);
-    const hashed_otp = await bcrypt.hash(String(email_otp.otp), saltRounds);
-    email_otp.otp = hashed_otp;
+    this.otp = await bcrypt.hash(String(this.otp), saltRounds);
     return;
   } catch (error) {
-    console.error("otp could not be hashed");
-    console.log(error);
-    return;
+    console.log("otp could not be hashed", error);
+    throw error;
+    // return;
   }
 });
 
-// auto-delete expired OTPs
-emailOtpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+emailOtpSchema.methods.compareOtp = async function (enteredOtp) {
+  try {
+    const comparedOtp = await bcrypt.compare(enteredOtp, this.otp);
+    return comparedOtp;
+  } catch (error) {
+    console.log("otp could not be compared");
+    throw error;
+  }
+};
 
-const EmailOtp = mongoose.model("EmailOtp", emailOtpSchema);
-
-module.exports = EmailOtp;
+module.exports = mongoose.model("EmailOtp", emailOtpSchema);

@@ -32,6 +32,7 @@ const signUp = async (req, res) => {
         email: userCreated.email,
         creator: userCreated.creator,
       },
+      message: "you are signed up successfully",
     });
   } catch (error) {
     console.error(error);
