@@ -33,20 +33,17 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ email: 1 }, { unique: true });
 
-userSchema.methods.generateLogTrackTkn = async function () {
-  try {
-    return jwt.sign(
-      {
-        username: this.username,
-      },
-      process.env.JWT_LOGGED_TRACK_SECRET_KEY,
-      {
-        expiresIn: process.env.JWT_LOGGED_TRACK_TKN_EXPIRY,
-      },
-    );
-  } catch (error) {
-    console.error("Error occurred generating logged in tracker token");
-  }
+userSchema.methods.generateLogTrackTkn = function () {
+  return jwt.sign(
+    {
+      id: this._id,
+      email: this.email,
+    },
+    process.env.JWT_LOGGED_TRACK_SECRET_KEY,
+    {
+      expiresIn: process.env.JWT_LOGGED_TRACK_TKN_EXPIRY, // e.g. "30d"
+    },
+  );
 };
 
 const User = mongoose.model("User", userSchema);

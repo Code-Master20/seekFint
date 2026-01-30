@@ -1,7 +1,7 @@
 const User = require("../models/user.model");
-const temporaryUser = require("../models/temporaryUser.model");
+const TemporaryUser = require("../models/temporaryUser.model");
 
-const signUp = async (req, res, _) => {
+const signUp = async (req, res) => {
   try {
     const { username, email, password } = req.tempUser;
 
@@ -14,13 +14,30 @@ const signUp = async (req, res, _) => {
     }
 
     const userCreated = await User.create({ username, email, password });
-    await temporaryUser.deleteMany({ email });
-    const logged_In_Track_Tkn = await userCreated.generateLogTrackTkn();
-    console.log(logged_In_Track_Tkn);
-    return res.status(200).json(userCreated);
+
+    await TemporaryUser.deleteMany({ email });
+
+    const token = userCreated.generateLogTrackTkn();
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(201).json({
+      success: true,
+      user: {
+        id: userCreated._id,
+        username: userCreated.username,
+        email: userCreated.email,
+        creator: userCreated.creator,
+      },
+    });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Error creating user", error });
+    console.error(error);
+    res.status(500).json({ message: "Error creating user" });
   }
 };
 
