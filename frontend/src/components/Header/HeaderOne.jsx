@@ -1,12 +1,12 @@
 import classMate from "../../assets/class-mate.png";
-import styles from "./Header.module.css";
+import styles from "./HeaderOne.module.css";
 import { FiSearch } from "react-icons/fi";
 import { RiMessengerLine } from "react-icons/ri";
 import { MdAddCircleOutline } from "react-icons/md";
 import { FaRegFileLines } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 // import { FaUsersBetweenLines } from "react-icons/fa6";
-export const Header = () => {
+export const HeaderOne = () => {
   //to track current width of the screen
   const [width, setWidth] = useState(window.outerWidth);
 

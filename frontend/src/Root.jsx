@@ -1,13 +1,16 @@
 import { useState } from "react";
-
 import "./App.css";
-import { Header } from "./components/Header/Header";
+import { HeaderOne } from "./components/Header/HeaderOne";
+import { HeaderTwo } from "./components/Header/HeaderTwo";
+import { Outlet } from "react-router-dom";
 
 function Root() {
   return (
-    <center>
-      <Header />
-    </center>
+    <div>
+      <HeaderOne />
+      <HeaderTwo />
+      {/* <Outlet /> */}
+    </div>
   );
 }
 
