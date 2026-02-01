@@ -30,21 +30,6 @@ const temporaryUserSchema = new mongoose.Schema(
   },
 );
 
-temporaryUserSchema.pre("save", async function () {
-  try {
-    const tempData = this;
-    if (!tempData.isModified("password")) return;
-
-    const saltRounds = await bcrypt.genSalt(10);
-    const hashed_password = await bcrypt.hash(tempData.password, saltRounds);
-    tempData.password = hashed_password;
-    return;
-  } catch (error) {
-    console.error("password could not be hashed");
-    return;
-  }
-});
-
 temporaryUserSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const TemporaryUser = mongoose.model("TemporaryUser", temporaryUserSchema);

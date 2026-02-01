@@ -47,8 +47,9 @@ const sendingOtpForLogIn = async (req, res) => {
         )
         .send(res);
     }
-
+    console.log(userExisted);
     const isMatch = await userExisted.comparePassword(password);
+
     if (!isMatch) {
       return new ErrorHandler(401, "invalid email or password")
         .log("email or password mis-matched", "invalid email or password")

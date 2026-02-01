@@ -34,6 +34,19 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ email: 1 }, { unique: true });
 
+userSchema.pre("save", async function () {
+  try {
+    if (!this.isModified("password")) return;
+    const saltRounds = await bcrypt.genSalt(10);
+    const passwordHashed = await bcrypt.hash(this.password, saltRounds);
+    this.password = passwordHashed;
+    return;
+  } catch (error) {
+    console.error("password could not be hashed");
+    throw error;
+  }
+});
+
 userSchema.methods.generateLogTrackTkn = function () {
   return jwt.sign(
     {
