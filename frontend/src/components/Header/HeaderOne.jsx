@@ -1,4 +1,4 @@
-import classMate from "../../assets/class-mate.png";
+import seekFint from "../../assets/seekFint.png";
 import styles from "./HeaderOne.module.css";
 import { FiSearch } from "react-icons/fi";
 import { RiMessengerLine } from "react-icons/ri";
@@ -28,7 +28,7 @@ export const HeaderOne = () => {
           <article className={styles["dashboard-logo"]}>
             <FaRegFileLines />
             {/* <FaUsersBetweenLines /> */}
-            <img src={classMate} alt="" width="120px" height="50px" />
+            <img src={seekFint} alt="" width="110px" height="90px" />
           </article>
           <article className={styles["create-search-sms"]}>
             <MdAddCircleOutline />
