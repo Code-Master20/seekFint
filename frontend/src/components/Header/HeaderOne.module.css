@@ -8,9 +8,8 @@
 }
 
 .header-container {
-  /* flex-grow: 1; */
+  margin-top: 1rem;
   width: 100vw;
-  height: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -20,7 +19,51 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100vw;
+  padding-bottom: auto;
 }
 
 .header-content-container {
+  width: 95vw;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.dashboard-logo {
+  width: 50vw;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  /* background-color: rgb(112, 147, 172); */
+}
+
+.dashboard-logo :nth-child(1) {
+  font-size: 2.5rem;
+}
+
+.dashboard-logo img {
+  width: 8rem;
+  height: 3rem;
+  /* font-size: la3ge; */
+}
+
+.create-search-sms {
+  width: 50vw;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  column-gap: 2rem;
+}
+
+.create-search-sms :nth-child(1) {
+  font-size: 2.3rem;
+}
+.create-search-sms :nth-child(2) {
+  font-size: 2.3rem;
+}
+.create-search-sms :nth-child(3) {
+  font-size: 2.3rem;
 }

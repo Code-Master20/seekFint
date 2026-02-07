@@ -3,7 +3,7 @@ import styles from "./HeaderOne.module.css";
 import { FiSearch } from "react-icons/fi";
 import { RiMessengerLine } from "react-icons/ri";
 import { MdAddCircleOutline } from "react-icons/md";
-import { FaRegFileLines } from "react-icons/fa6";
+import { HiOutlineSortDescending } from "react-icons/hi";
 import { useEffect, useState } from "react";
 // import { FaUsersBetweenLines } from "react-icons/fa6";
 export const HeaderOne = () => {
@@ -26,9 +26,8 @@ export const HeaderOne = () => {
       <nav className={styles["header-first-child"]}>
         <section className={styles["header-content-container"]}>
           <article className={styles["dashboard-logo"]}>
-            <FaRegFileLines />
-            {/* <FaUsersBetweenLines /> */}
-            <img src={seekFint} alt="" width="110px" height="90px" />
+            <HiOutlineSortDescending />
+            <img src={seekFint} alt="" />
           </article>
           <article className={styles["create-search-sms"]}>
             <MdAddCircleOutline />
