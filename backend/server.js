@@ -12,11 +12,11 @@ const cors = require("cors");
 const app = express();
 
 const PORT = process.env.PORT || 3000;
+const frontend_uri = process.env.FRONTEND_URI || "http://localhost:5173";
 
 const corsOptions = {
-  origin: process.env.FRONTEND_URL, //<--in future if you buy a domain, paste here that domain
-  methods: "GET, POST, PUT, DELETE, PATCH, HEAD", //<-- what can an user do from front-end
-  credentials: true,
+  origin: frontend_uri,
+  methods: "GET, POST, PUT, DELETE, PATCH, HEAD",
 };
 app.use(cors(corsOptions));
 app.use(cookieParser());
