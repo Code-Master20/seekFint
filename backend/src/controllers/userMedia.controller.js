@@ -12,6 +12,7 @@ const toPublicUser = require("../utils/auth/publicUser.util");
 const { getViewerLikedPostIdSet } = require("../utils/posts/postLike.util");
 const {
   resolvePostAudience,
+  buildRelationshipIdSet,
   buildFriendIdSet,
   buildFollowingIdSet,
   canViewerAccessPostAudience,
@@ -185,11 +186,11 @@ const normalizeObjectIdListInput = (value) => {
   );
 };
 
-const normalizeHiddenFriendIds = ({ value, ownerFriendIdSet = new Set() }) =>
-  normalizeObjectIdListInput(value).filter((friendId) => ownerFriendIdSet.has(friendId));
+const normalizeHiddenFriendIds = ({ value, allowedFriendIdSet = new Set() }) =>
+  normalizeObjectIdListInput(value).filter((friendId) => allowedFriendIdSet.has(friendId));
 
-const normalizeIncludedFriendIds = ({ value, ownerFriendIdSet = new Set() }) =>
-  normalizeObjectIdListInput(value).filter((friendId) => ownerFriendIdSet.has(friendId));
+const normalizeIncludedFriendIds = ({ value, allowedFriendIdSet = new Set() }) =>
+  normalizeObjectIdListInput(value).filter((friendId) => allowedFriendIdSet.has(friendId));
 
 const normalizePostVisibility = (value, fallback = true) => {
   if (typeof value === "boolean") {
@@ -1540,20 +1541,27 @@ const createOwnerPost = async (req, res) => {
       normalizePostVisibility(req.body?.isPublic, true) ? "all" : "private",
     );
     const isPublic = ["world", "all"].includes(visibility);
-    const owner = await User.findById(req.user.id).select("friends");
+    const owner = await User.findById(req.user.id).select("friends followers");
 
     if (!owner) {
       return new ErrorHandler(404, "User not found").send(res);
     }
 
     const ownerFriendIdSet = buildFriendIdSet(owner);
+    const ownerFollowerIdSet = buildRelationshipIdSet(owner, "followers");
+    const ownerSafroIdSet = new Set(
+      Array.from(ownerFriendIdSet).filter((friendId) => ownerFollowerIdSet.has(friendId)),
+    );
+    const ownerFradoIdSet = new Set(
+      Array.from(ownerFriendIdSet).filter((friendId) => !ownerFollowerIdSet.has(friendId)),
+    );
     const hiddenFromUsers = normalizeHiddenFriendIds({
       value: req.body?.hiddenFromUserIds ?? req.body?.hiddenFromUsers,
-      ownerFriendIdSet,
+      allowedFriendIdSet: visibility === "world" ? ownerSafroIdSet : ownerFriendIdSet,
     });
     const visibleToUsers = normalizeIncludedFriendIds({
       value: req.body?.includedUserIds ?? req.body?.visibleToUsers,
-      ownerFriendIdSet,
+      allowedFriendIdSet: visibility === "world" ? ownerFradoIdSet : ownerFriendIdSet,
     });
 
     if (postType === "video" && Number(mediaFile.size) > MAX_OWNER_VIDEO_UPLOAD_BYTES) {

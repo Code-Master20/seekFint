@@ -80,7 +80,7 @@ const getFriendPrivacyCopy = ({ mode, visibility }) => {
       description:
         visibility === "friends"
           ? "Select the frados or safros who should not see this friends-only post."
-          : "Select the frados or safros who should not see this world post.",
+          : "Select the safros who should not see this world post.",
     };
   }
 
@@ -91,7 +91,7 @@ const getFriendPrivacyCopy = ({ mode, visibility }) => {
     description:
       visibility === "private"
         ? "Select the frados or safros who should be allowed to see this private post."
-        : "Select the frados or safros who should be allowed to see this world post.",
+        : "Frados are excluded from world posts by default. Select the frados you want to include.",
   };
 };
 
@@ -682,14 +682,32 @@ export const UploadStudio = () => {
 
     if (name === "visibility") {
       const nextModes = getAudienceModesForVisibility(value);
+      const nextSafroIds = new Set(
+        ownerFriends
+          .filter((friend) => friend.audienceType === "safro")
+          .map((friend) => `${friend._id}`),
+      );
+      const nextFradoIds = new Set(
+        ownerFriends
+          .filter((friend) => friend.audienceType === "frado")
+          .map((friend) => `${friend._id}`),
+      );
 
       setFriendPrivacyMode((prev) => (nextModes.includes(prev) ? prev : nextModes[0] || "exclude"));
       setFriendPrivacyPickerOpen((prev) => (nextModes.length ? prev : false));
       setPostForm((prev) => ({
         ...prev,
         visibility: value,
-        hiddenFromUserIds: nextModes.includes("exclude") ? prev.hiddenFromUserIds : [],
-        includedUserIds: nextModes.includes("include") ? prev.includedUserIds : [],
+        hiddenFromUserIds: nextModes.includes("exclude")
+          ? value === "world"
+            ? prev.hiddenFromUserIds.filter((friendId) => nextSafroIds.has(`${friendId}`))
+            : prev.hiddenFromUserIds
+          : [],
+        includedUserIds: nextModes.includes("include")
+          ? value === "world"
+            ? prev.includedUserIds.filter((friendId) => nextFradoIds.has(`${friendId}`))
+            : prev.includedUserIds
+          : [],
       }));
       return;
     }
@@ -972,6 +990,18 @@ export const UploadStudio = () => {
   });
   const normalizedFriendSearchText = friendSearchText.trim().toLowerCase();
   const visibleFriends = ownerFriends.filter((friend) => {
+    if (postForm.visibility === "world" && activeFriendPrivacyMode === "exclude") {
+      if (friend.audienceType !== "safro") {
+        return false;
+      }
+    }
+
+    if (postForm.visibility === "world" && activeFriendPrivacyMode === "include") {
+      if (friend.audienceType !== "frado") {
+        return false;
+      }
+    }
+
     if (!normalizedFriendSearchText) {
       return true;
     }
@@ -1461,6 +1491,20 @@ export const UploadStudio = () => {
               ) : ownerFriends.length === 0 ? (
                 <div className={styles.emptyState}>
                   Add friends first if you want to control this upload with frado and safro access.
+                </div>
+              ) : postForm.visibility === "world" &&
+                activeFriendPrivacyMode === "exclude" &&
+                !visibleFriends.length &&
+                !ownerFriends.some((friend) => friend.audienceType === "safro") ? (
+                <div className={styles.emptyState}>
+                  No safros available to exclude from this world post yet.
+                </div>
+              ) : postForm.visibility === "world" &&
+                activeFriendPrivacyMode === "include" &&
+                !visibleFriends.length &&
+                !ownerFriends.some((friend) => friend.audienceType === "frado") ? (
+                <div className={styles.emptyState}>
+                  No frados available to include in this world post yet.
                 </div>
               ) : (
                 <>
