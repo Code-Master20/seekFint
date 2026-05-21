@@ -40,7 +40,7 @@ const postSchema = new mongoose.Schema(
       enum: ["private", "friends", "world", "all"],
       trim: true,
       lowercase: true,
-      default: "world",
+      default: "all",
     },
     isPublic: {
       type: Boolean,

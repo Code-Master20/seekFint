@@ -11,6 +11,7 @@ const { getViewerCommentReactionSets } = require("../utils/comments/commentLike.
 const { buildCommentThreadPayload } = require("../utils/comments/commentThread.util");
 const {
   buildFriendIdSet,
+  buildFollowingIdSet,
   canViewerAccessPostAudience,
 } = require("../utils/posts/postAudience.util");
 
@@ -75,8 +76,9 @@ const getPublicPostComments = async (req, res) => {
       return new ErrorHandler(400, "Invalid post selected").send(res);
     }
 
-    const viewer = viewerId ? await User.findById(viewerId).select("friends") : null;
+    const viewer = viewerId ? await User.findById(viewerId).select("friends following") : null;
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
     const post = await Post.findById(postId).select(
       "user commentCount visibility isPublic hiddenFromUsers visibleToUsers",
     );
@@ -87,6 +89,7 @@ const getPublicPostComments = async (req, res) => {
         post,
         viewerId,
         viewerFriendIdSet,
+        viewerFollowingIdSet,
       })
     ) {
       return new ErrorHandler(404, "Post not found").send(res);
@@ -137,8 +140,9 @@ const createPostComment = async (req, res) => {
       return new ErrorHandler(400, "Comment link must be a valid URL").send(res);
     }
 
-    const viewer = viewerId ? await User.findById(viewerId).select("friends") : null;
+    const viewer = viewerId ? await User.findById(viewerId).select("friends following") : null;
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
     const post = await Post.findById(postId).select(
       "user commentCount visibility isPublic hiddenFromUsers visibleToUsers",
     );
@@ -149,6 +153,7 @@ const createPostComment = async (req, res) => {
         post,
         viewerId,
         viewerFriendIdSet,
+        viewerFollowingIdSet,
       })
     ) {
       return new ErrorHandler(404, "Post not found").send(res);

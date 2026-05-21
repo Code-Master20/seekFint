@@ -2292,17 +2292,7 @@ export const Profile = () => {
       return null;
     }
 
-    const friendButtonLabel = !user
-      ? "Add friend"
-      : relationshipStatus === "friends"
-        ? friendType === "safro"
-          ? "Safro"
-          : "Frado"
-        : relationshipStatus === "pending_sent"
-          ? "Request sent"
-          : relationshipStatus === "pending_received"
-            ? "Accept request"
-            : "Add friend";
+    const friendButtonLabel = "Add friend";
     const friendButtonClassName =
       relationshipStatus === "friends"
         ? styles.friendActionGhostBtn
@@ -2314,13 +2304,7 @@ export const Profile = () => {
         : relationshipStatus === "none"
           ? handleSendFriendRequest
           : undefined;
-    const subscribeButtonLabel = !user
-      ? "Subscribe"
-      : isSubscribed
-        ? subscriberType === "safro"
-          ? "Safro"
-          : "Subscribed"
-        : "Subscribe";
+    const subscribeButtonLabel = "Subscribe";
     const subscribeButtonClassName = isSubscribed
       ? styles.friendActionGhostBtn
       : styles.friendActionBtn;

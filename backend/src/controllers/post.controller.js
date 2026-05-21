@@ -8,6 +8,7 @@ const { getViewerLikedPostIdSet } = require("../utils/posts/postLike.util");
 const {
   resolvePostAudience,
   buildFriendIdSet,
+  buildFollowingIdSet,
   canViewerAccessPostAudience,
 } = require("../utils/posts/postAudience.util");
 
@@ -20,8 +21,9 @@ const getPublicPosts = async (req, res) => {
     const limit = Number.isFinite(limitValue)
       ? Math.min(Math.max(limitValue, 1), 48)
       : 24;
-    const viewer = viewerId ? await User.findById(viewerId).select("friends") : null;
+    const viewer = viewerId ? await User.findById(viewerId).select("friends following") : null;
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
 
     const query =
       requestedType === "all" || !allowedTypes.includes(requestedType)
@@ -50,6 +52,7 @@ const getPublicPosts = async (req, res) => {
           post,
           viewerId,
           viewerFriendIdSet,
+          viewerFollowingIdSet,
         }),
       )
       .slice(0, limit)
@@ -92,8 +95,9 @@ const getPublicPosts = async (req, res) => {
 const getPublicPostById = async (req, res) => {
   try {
     const viewerId = req.user?.id || req.user?._id || null;
-    const viewer = viewerId ? await User.findById(viewerId).select("friends") : null;
+    const viewer = viewerId ? await User.findById(viewerId).select("friends following") : null;
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
     const post = await Post.findById(req.params.postId).populate(
       "user",
       "username avatar banner profession location bio talent status gender dob profileVisibility creator friends followers following createdAt updatedAt",
@@ -106,6 +110,7 @@ const getPublicPostById = async (req, res) => {
         post,
         viewerId,
         viewerFriendIdSet,
+        viewerFollowingIdSet,
       })
     ) {
       return new ErrorHandler(404, "Post not found").send(res);
@@ -150,8 +155,9 @@ const getPublicPostById = async (req, res) => {
 const incrementPublicPostView = async (req, res) => {
   try {
     const viewerId = req.user?.id || req.user?._id || null;
-    const viewer = viewerId ? await User.findById(viewerId).select("friends") : null;
+    const viewer = viewerId ? await User.findById(viewerId).select("friends following") : null;
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
     const existingPost = await Post.findById(req.params.postId).select(
       "_id user viewCount postType contentFormat isPublic visibility hiddenFromUsers visibleToUsers",
     );
@@ -162,6 +168,7 @@ const incrementPublicPostView = async (req, res) => {
         post: existingPost,
         viewerId,
         viewerFriendIdSet,
+        viewerFollowingIdSet,
       })
     ) {
       return new ErrorHandler(404, "Post not found").send(res);

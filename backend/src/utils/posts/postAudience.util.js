@@ -8,10 +8,18 @@ const resolvePostAudience = (post) => {
   return post?.isPublic === false ? "private" : "world";
 };
 
-const buildFriendIdSet = (userDoc) =>
+const buildRelationshipIdSet = (userDoc, fieldName) =>
   new Set(
-    Array.isArray(userDoc?.friends) ? userDoc.friends.map((friendId) => `${friendId}`) : [],
+    Array.isArray(userDoc?.[fieldName])
+      ? userDoc[fieldName].map((relationshipId) => `${relationshipId}`)
+      : [],
   );
+
+const buildFriendIdSet = (userDoc) =>
+  buildRelationshipIdSet(userDoc, "friends");
+
+const buildFollowingIdSet = (userDoc) =>
+  buildRelationshipIdSet(userDoc, "following");
 
 const buildHiddenViewerIdSet = (post) =>
   new Set(
@@ -35,6 +43,7 @@ const canViewerAccessPostAudience = ({
   post,
   viewerId = null,
   viewerFriendIdSet = new Set(),
+  viewerFollowingIdSet = new Set(),
 }) => {
   const ownerId = `${post?.user?._id || post?.user || ""}`;
 
@@ -56,13 +65,22 @@ const canViewerAccessPostAudience = ({
   }
 
   const viewerIsFriend = ownerId ? viewerFriendIdSet.has(ownerId) : false;
+  const viewerIsSubscribedToOwner = ownerId ? viewerFollowingIdSet.has(ownerId) : false;
 
   if (visibility === "friends") {
     return viewerIsFriend;
   }
 
   if (visibility === "world") {
-    return !viewerIsFriend || (viewerId ? includedViewerIdSet.has(`${viewerId}`) : false);
+    if (!viewerIsFriend) {
+      return true;
+    }
+
+    if (viewerIsSubscribedToOwner) {
+      return true;
+    }
+
+    return viewerId ? includedViewerIdSet.has(`${viewerId}`) : false;
   }
 
   if (visibility === "all") {
@@ -74,7 +92,9 @@ const canViewerAccessPostAudience = ({
 
 module.exports = {
   resolvePostAudience,
+  buildRelationshipIdSet,
   buildFriendIdSet,
+  buildFollowingIdSet,
   buildHiddenViewerIdSet,
   canViewerAccessPostAudience,
 };

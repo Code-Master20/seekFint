@@ -511,6 +511,13 @@
   width: 100%;
 }
 
+.friendPrivacyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
 .friendPrivacyButton {
   min-height: 42px;
   padding: 0 0.95rem;
@@ -524,6 +531,13 @@
   color: #1f6b52;
   font-weight: 700;
   cursor: pointer;
+}
+
+.friendPrivacyButtonActive {
+  background: #1f6b52;
+  border-color: #1f6b52;
+  color: #fffefb;
+  box-shadow: 0 10px 24px rgba(31, 107, 82, 0.18);
 }
 
 .heroFriendButton {

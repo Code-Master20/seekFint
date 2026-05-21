@@ -22,7 +22,7 @@ const initialPostForm = {
   description: "",
   tags: "",
   contentFormat: "article",
-  visibility: "world",
+  visibility: "all",
   hiddenFromUserIds: [],
   includedUserIds: [],
 };
@@ -38,6 +38,61 @@ const formatDurationLabel = (value) => {
   const seconds = wholeSeconds % 60;
 
   return `${minutes}:${`${seconds}`.padStart(2, "0")}`;
+};
+
+const getAudienceModesForVisibility = (visibility) => {
+  if (visibility === "friends") {
+    return ["exclude"];
+  }
+
+  if (visibility === "world") {
+    return ["exclude", "include"];
+  }
+
+  if (visibility === "private") {
+    return ["include"];
+  }
+
+  return [];
+};
+
+const decorateAudienceFriends = (friends = [], followers = []) => {
+  const followerIdSet = new Set(
+    Array.isArray(followers)
+      ? followers.map((person) => `${person?._id || person || ""}`).filter(Boolean)
+      : [],
+  );
+
+  return Array.isArray(friends)
+    ? friends.map((friend) => ({
+        ...friend,
+        audienceType: followerIdSet.has(`${friend?._id || ""}`) ? "safro" : "frado",
+      }))
+    : [];
+};
+
+const getFriendPrivacyCopy = ({ mode, visibility }) => {
+  if (mode === "exclude") {
+    return {
+      buttonLabel: "Exclude friends",
+      closeLabel: "Close exclude friends",
+      heading: "Exclude specific friends",
+      description:
+        visibility === "friends"
+          ? "Select the frados or safros who should not see this friends-only post."
+          : "Select the frados or safros who should not see this world post.",
+    };
+  }
+
+  return {
+    buttonLabel: "Include friends",
+    closeLabel: "Close include friends",
+    heading: "Include specific friends",
+    description:
+      visibility === "private"
+        ? "Select the frados or safros who should be allowed to see this private post."
+        : "Select the frados or safros who should be allowed to see this world post.",
+  };
 };
 
 const getMinimumClipSpan = (durationSeconds) => {
@@ -347,6 +402,7 @@ export const UploadStudio = () => {
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendPrivacyPickerOpen, setFriendPrivacyPickerOpen] = useState(false);
   const [friendSearchText, setFriendSearchText] = useState("");
+  const [friendPrivacyMode, setFriendPrivacyMode] = useState("exclude");
 
   const selectedPostType = selectedPostFile?.type?.startsWith("video/")
     ? "video"
@@ -591,9 +647,10 @@ export const UploadStudio = () => {
       }
 
       const response = await api.get("/network/hub");
-      const nextFriends = Array.isArray(response.data?.data?.friends)
-        ? response.data.data.friends
-        : [];
+      const nextFriends = decorateAudienceFriends(
+        response.data?.data?.friends,
+        response.data?.data?.followers,
+      );
       setOwnerFriends(nextFriends);
       uploadFriendsCache.set(ownerCacheKey, {
         updatedAt: Date.now(),
@@ -623,6 +680,20 @@ export const UploadStudio = () => {
   const handlePostInputChange = (event) => {
     const { name, value } = event.target;
 
+    if (name === "visibility") {
+      const nextModes = getAudienceModesForVisibility(value);
+
+      setFriendPrivacyMode((prev) => (nextModes.includes(prev) ? prev : nextModes[0] || "exclude"));
+      setFriendPrivacyPickerOpen((prev) => (nextModes.length ? prev : false));
+      setPostForm((prev) => ({
+        ...prev,
+        visibility: value,
+        hiddenFromUserIds: nextModes.includes("exclude") ? prev.hiddenFromUserIds : [],
+        includedUserIds: nextModes.includes("include") ? prev.includedUserIds : [],
+      }));
+      return;
+    }
+
     setPostForm((prev) => ({
       ...prev,
       [name]: value,
@@ -641,6 +712,7 @@ export const UploadStudio = () => {
     setSelectedPlaylistIds([]);
     setNewPlaylistTitle("");
     setNewPlaylistDescription("");
+    setFriendPrivacyMode("exclude");
   };
 
   const handlePostFileSelect = (file) => {
@@ -666,13 +738,20 @@ export const UploadStudio = () => {
   };
 
   const handleAudienceFriendToggle = (friendId) => {
+    const targetField =
+      activeFriendPrivacyMode === "exclude" ? "hiddenFromUserIds" : "includedUserIds";
+
     setPostForm((prev) => ({
       ...prev,
-      [friendPrivacyMode === "exclude" ? "hiddenFromUserIds" : "includedUserIds"]:
-        activeAudienceFriendIds.includes(friendId)
-          ? activeAudienceFriendIds.filter((item) => item !== friendId)
-          : [...activeAudienceFriendIds, friendId],
+      [targetField]: prev[targetField].includes(friendId)
+        ? prev[targetField].filter((item) => item !== friendId)
+        : [...prev[targetField], friendId],
     }));
+  };
+
+  const handleFriendPrivacyButtonClick = (mode) => {
+    setFriendPrivacyMode(mode);
+    setFriendPrivacyPickerOpen((prev) => (mode === friendPrivacyMode ? !prev : true));
   };
 
   const handlePreviewSelectedClip = async () => {
@@ -878,24 +957,19 @@ export const UploadStudio = () => {
     )
       ? clipPreviewUrl
       : postPreviewUrl;
-  const friendPrivacyMode = ["all", "friends"].includes(postForm.visibility)
-    ? "exclude"
-    : "include";
+  const availableFriendPrivacyModes = getAudienceModesForVisibility(postForm.visibility);
+  const hasFriendPrivacyControls = availableFriendPrivacyModes.length > 0;
+  const activeFriendPrivacyMode = availableFriendPrivacyModes.includes(friendPrivacyMode)
+    ? friendPrivacyMode
+    : availableFriendPrivacyModes[0] || "exclude";
   const activeAudienceFriendIds =
-    friendPrivacyMode === "exclude" ? postForm.hiddenFromUserIds : postForm.includedUserIds;
-  const audienceFriendCount = activeAudienceFriendIds.length;
-  const friendPrivacyButtonLabel =
-    friendPrivacyMode === "exclude" ? "Exclude friends" : "Include friends";
-  const friendPrivacyCloseLabel =
-    friendPrivacyMode === "exclude" ? "Close exclude friends" : "Close include friends";
-  const friendPrivacyHeading =
-    friendPrivacyMode === "exclude"
-      ? "Exclude specific friends"
-      : "Include specific friends";
-  const friendPrivacyDescription =
-    friendPrivacyMode === "exclude"
-      ? "Select the friends who should not see this upload."
-      : "Select the friends who should still be allowed to see this upload.";
+    activeFriendPrivacyMode === "exclude"
+      ? postForm.hiddenFromUserIds
+      : postForm.includedUserIds;
+  const friendPrivacyCopy = getFriendPrivacyCopy({
+    mode: activeFriendPrivacyMode,
+    visibility: postForm.visibility,
+  });
   const normalizedFriendSearchText = friendSearchText.trim().toLowerCase();
   const visibleFriends = ownerFriends.filter((friend) => {
     if (!normalizedFriendSearchText) {
@@ -920,15 +994,34 @@ export const UploadStudio = () => {
       <section className={styles.hero}>
         <div className={styles.heroContent}>
           <h1>{formatPostKindLabel(uploadIntent, postForm.contentFormat)} upload</h1>
-          {ownerFriends.length || friendsLoading ? (
-            <button
-              type="button"
-              className={`${styles.friendPrivacyButton} ${styles.heroFriendButton}`}
-              onClick={() => setFriendPrivacyPickerOpen((prev) => !prev)}
-            >
-              {friendPrivacyPickerOpen ? friendPrivacyCloseLabel : friendPrivacyButtonLabel}
-              {audienceFriendCount > 0 ? ` (${audienceFriendCount})` : ""}
-            </button>
+          {hasFriendPrivacyControls && (ownerFriends.length || friendsLoading) ? (
+            <div className={styles.friendPrivacyActions}>
+              {availableFriendPrivacyModes.map((mode) => {
+                const modeCopy = getFriendPrivacyCopy({
+                  mode,
+                  visibility: postForm.visibility,
+                });
+                const modeCount =
+                  mode === "exclude"
+                    ? postForm.hiddenFromUserIds.length
+                    : postForm.includedUserIds.length;
+                const modeActive = activeFriendPrivacyMode === mode;
+
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`${styles.friendPrivacyButton} ${styles.heroFriendButton} ${
+                      modeActive ? styles.friendPrivacyButtonActive : ""
+                    }`}
+                    onClick={() => handleFriendPrivacyButtonClick(mode)}
+                  >
+                    {friendPrivacyPickerOpen && modeActive ? modeCopy.closeLabel : modeCopy.buttonLabel}
+                    {modeCount > 0 ? ` (${modeCount})` : ""}
+                  </button>
+                );
+              })}
+            </div>
           ) : null}
         </div>
       </section>
@@ -1209,16 +1302,37 @@ export const UploadStudio = () => {
               </div>
             ) : null}
 
-            {ownerFriends.length || friendsLoading ? (
+            {hasFriendPrivacyControls && (ownerFriends.length || friendsLoading) ? (
               <div className={styles.mobileFriendAction}>
-                <button
-                  type="button"
-                  className={styles.friendPrivacyButton}
-                  onClick={() => setFriendPrivacyPickerOpen((prev) => !prev)}
-                >
-                  {friendPrivacyPickerOpen ? friendPrivacyCloseLabel : friendPrivacyButtonLabel}
-                  {audienceFriendCount > 0 ? ` (${audienceFriendCount})` : ""}
-                </button>
+                <div className={styles.friendPrivacyActions}>
+                  {availableFriendPrivacyModes.map((mode) => {
+                    const modeCopy = getFriendPrivacyCopy({
+                      mode,
+                      visibility: postForm.visibility,
+                    });
+                    const modeCount =
+                      mode === "exclude"
+                        ? postForm.hiddenFromUserIds.length
+                        : postForm.includedUserIds.length;
+                    const modeActive = activeFriendPrivacyMode === mode;
+
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={`${styles.friendPrivacyButton} ${
+                          modeActive ? styles.friendPrivacyButtonActive : ""
+                        }`}
+                        onClick={() => handleFriendPrivacyButtonClick(mode)}
+                      >
+                        {friendPrivacyPickerOpen && modeActive
+                          ? modeCopy.closeLabel
+                          : modeCopy.buttonLabel}
+                        {modeCount > 0 ? ` (${modeCount})` : ""}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : null}
 
@@ -1304,8 +1418,8 @@ export const UploadStudio = () => {
               <div className={styles.cardAudiencePanelHeader}>
                 <div className={styles.playlistHeader}>
                   <div>
-                    <strong>{friendPrivacyHeading}</strong>
-                    <p>{friendPrivacyDescription}</p>
+                    <strong>{friendPrivacyCopy.heading}</strong>
+                    <p>{friendPrivacyCopy.description}</p>
                   </div>
                 </div>
 
@@ -1318,11 +1432,35 @@ export const UploadStudio = () => {
                 </button>
               </div>
 
+              {availableFriendPrivacyModes.length > 1 ? (
+                <div className={styles.friendPrivacyActions}>
+                  {availableFriendPrivacyModes.map((mode) => {
+                    const modeCopy = getFriendPrivacyCopy({
+                      mode,
+                      visibility: postForm.visibility,
+                    });
+
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={`${styles.friendPrivacyButton} ${
+                          activeFriendPrivacyMode === mode ? styles.friendPrivacyButtonActive : ""
+                        }`}
+                        onClick={() => setFriendPrivacyMode(mode)}
+                      >
+                        {modeCopy.buttonLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
               {friendsLoading ? (
                 <UploadFriendOverlaySkeleton />
               ) : ownerFriends.length === 0 ? (
                 <div className={styles.emptyState}>
-                  Add friends first if you want to hide this upload from specific people.
+                  Add friends first if you want to control this upload with frado and safro access.
                 </div>
               ) : (
                 <>
@@ -1347,7 +1485,14 @@ export const UploadStudio = () => {
                           />
                           <div>
                             <strong>{friend.username || "Friend"}</strong>
-                            <small>{friend.profession || friend.email || "Connected friend"}</small>
+                            <small>
+                              {[
+                                friend.audienceType === "safro" ? "Safro" : "Frado",
+                                friend.profession || friend.email,
+                              ]
+                                .filter(Boolean)
+                                .join(" | ") || "Connected friend"}
+                            </small>
                           </div>
                         </label>
                       ))}

@@ -13,6 +13,7 @@ const { getViewerLikedPostIdSet } = require("../utils/posts/postLike.util");
 const {
   resolvePostAudience,
   buildFriendIdSet,
+  buildFollowingIdSet,
   canViewerAccessPostAudience,
 } = require("../utils/posts/postAudience.util");
 const {
@@ -208,7 +209,7 @@ const normalizePostVisibility = (value, fallback = true) => {
   return fallback;
 };
 
-const normalizePostAudience = (value, fallback = "world") => {
+const normalizePostAudience = (value, fallback = "all") => {
   const normalizedValue = `${value ?? ""}`.trim().toLowerCase();
 
   if (["private", "friends", "world", "all"].includes(normalizedValue)) {
@@ -216,7 +217,7 @@ const normalizePostAudience = (value, fallback = "world") => {
   }
 
   if (normalizedValue === "public") {
-    return "world";
+    return "all";
   }
 
   return fallback;
@@ -1536,7 +1537,7 @@ const createOwnerPost = async (req, res) => {
     const tags = normalizeTagInput(req.body?.tags);
     const visibility = normalizePostAudience(
       req.body?.visibility,
-      normalizePostVisibility(req.body?.isPublic, true) ? "world" : "private",
+      normalizePostVisibility(req.body?.isPublic, true) ? "all" : "private",
     );
     const isPublic = ["world", "all"].includes(visibility);
     const owner = await User.findById(req.user.id).select("friends");
@@ -1692,8 +1693,9 @@ const getProfilePosts = async (req, res) => {
     const viewerId = req.user?.id || req.user?._id || null;
     const requestedType = `${req.query.type ?? "all"}`.trim().toLowerCase();
     const allowedTypes = ["all", "image", "video"];
-    const viewer = viewerId ? await User.findById(viewerId).select("friends") : null;
+    const viewer = viewerId ? await User.findById(viewerId).select("friends following") : null;
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
 
     if (!mongoose.isValidObjectId(userId)) {
       return new ErrorHandler(400, "Invalid profile id").send(res);
@@ -1729,6 +1731,7 @@ const getProfilePosts = async (req, res) => {
             post,
             viewerId,
             viewerFriendIdSet,
+            viewerFollowingIdSet,
           }),
         )
         .map((post) =>
@@ -1756,8 +1759,9 @@ const togglePostLike = async (req, res) => {
     const post = await Post.findById(postId).select(
       "user likeCount title visibility isPublic hiddenFromUsers visibleToUsers",
     );
-    const viewer = await User.findById(req.user.id).select("friends");
+    const viewer = await User.findById(req.user.id).select("friends following");
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
 
     if (
       !post ||
@@ -1765,6 +1769,7 @@ const togglePostLike = async (req, res) => {
         post,
         viewerId: req.user.id,
         viewerFriendIdSet,
+        viewerFollowingIdSet,
       })
     ) {
       return new ErrorHandler(404, "Post not found").send(res);
@@ -1888,8 +1893,9 @@ const toggleWatchLater = async (req, res) => {
     const post = await Post.findById(postId).select(
       "title description url postType category user likeCount commentCount shareCount viewCount postDate createdAt updatedAt visibility isPublic hiddenFromUsers visibleToUsers",
     );
-    const viewer = await User.findById(req.user.id).select("friends");
+    const viewer = await User.findById(req.user.id).select("friends following");
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
 
     if (
       !post ||
@@ -1898,6 +1904,7 @@ const toggleWatchLater = async (req, res) => {
         post,
         viewerId: req.user.id,
         viewerFriendIdSet,
+        viewerFollowingIdSet,
       })
     ) {
       return new ErrorHandler(404, "Video post not found").send(res);
@@ -1948,8 +1955,9 @@ const getWatchLaterVideos = async (req, res) => {
     const watchLaterIds = Array.isArray(user.watchLaterPosts)
       ? user.watchLaterPosts
       : [];
-    const viewer = await User.findById(req.user.id).select("friends");
+    const viewer = await User.findById(req.user.id).select("friends following");
     const viewerFriendIdSet = buildFriendIdSet(viewer);
+    const viewerFollowingIdSet = buildFollowingIdSet(viewer);
 
     const posts = await Post.find({
       _id: { $in: watchLaterIds },
@@ -1972,6 +1980,7 @@ const getWatchLaterVideos = async (req, res) => {
           post,
           viewerId: req.user.id,
           viewerFriendIdSet,
+          viewerFollowingIdSet,
         }),
       )
       .map((post) =>
