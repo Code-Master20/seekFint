@@ -13,6 +13,7 @@ const blockSchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
+    default: () => Date.now() + 45 * 60 * 1000,
   },
 });
 

@@ -2,6 +2,7 @@ const EmailOtp = require("../../models/auth/emailOtp.model");
 const EmailChangeRequest = require("../../models/auth/emailChangeRequest.model");
 const User = require("../../models/auth/user.model");
 const sendOtp = require("../../services/auth/sendOtp.service");
+const { isExpiredDate } = require("../../utils/auth/expiry.util");
 const ErrorHandler = require("../../utils/errorHandler.util");
 const SuccessHandler = require("../../utils/successHandler.util");
 const toPublicUser = require("../../utils/auth/publicUser.util");
@@ -15,6 +16,11 @@ const compareAndTrackOtp = async ({
   const otpRecord = await EmailOtp.findOne({ email, purpose });
 
   if (!otpRecord) {
+    return { ok: false, status: 410, message: "OTP expired. Please request a new one." };
+  }
+
+  if (isExpiredDate(otpRecord.expiresAt)) {
+    await EmailOtp.deleteOne({ _id: otpRecord._id });
     return { ok: false, status: 410, message: "OTP expired. Please request a new one." };
   }
 
@@ -120,6 +126,23 @@ const verifyEmailChange = async (req, res) => {
     });
 
     if (!emailChangeRequest) {
+      return new ErrorHandler(
+        410,
+        "Email change session expired. Request new verification codes.",
+      ).send(res);
+    }
+
+    if (isExpiredDate(emailChangeRequest.expiresAt)) {
+      await Promise.all([
+        EmailChangeRequest.deleteOne({ _id: emailChangeRequest._id }),
+        EmailOtp.deleteMany({
+          $or: [
+            { email: emailChangeRequest.currentEmail, purpose: "change-email-old" },
+            { email: emailChangeRequest.newEmail, purpose: "change-email-new" },
+          ],
+        }),
+      ]);
+
       return new ErrorHandler(
         410,
         "Email change session expired. Request new verification codes.",

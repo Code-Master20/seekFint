@@ -15,11 +15,12 @@ const passwordChangeAttemptSchema = new Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: { expires: 0 }, //auto delete after expiry
     },
   },
   { timestamps: true },
 );
+
+passwordChangeAttemptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model(
   "PasswordChangeAttempt",

@@ -2,24 +2,11 @@ const TemporaryUser = require("../../models/auth/temporaryUser.model");
 const User = require("../../models/auth/user.model");
 const BlockedEmail = require("../../models/auth/temBlockEmails.model");
 const sendOtp = require("../../services/auth/sendOtp.service");
+const { getRemainingSeconds } = require("../../utils/auth/expiry.util");
 const ErrorHandler = require("../../utils/errorHandler.util");
 const SuccessHandler = require("../../utils/successHandler.util");
 
 const LOGIN_BLOCK_DURATION_MS = 45 * 60 * 1000;
-
-const getRemainingBlockSeconds = (expiresAt) => {
-  if (!(expiresAt instanceof Date)) {
-    return 0;
-  }
-
-  const remainingMs = expiresAt.getTime() - Date.now();
-
-  if (remainingMs <= 0) {
-    return 0;
-  }
-
-  return Math.ceil(remainingMs / 1000);
-};
 
 const sendingOtpForSignUp = async (req, res) => {
   try {
@@ -45,7 +32,7 @@ const sendingOtpForLogIn = async (req, res) => {
     const blocked = await BlockedEmail.findOne({ email });
 
     if (blocked && blocked.count > 2) {
-      const secondsLeft = getRemainingBlockSeconds(blocked.expiresAt);
+      const secondsLeft = getRemainingSeconds(blocked.expiresAt);
 
       if (secondsLeft <= 0) {
         await BlockedEmail.deleteOne({ _id: blocked._id });
@@ -83,15 +70,25 @@ const sendingOtpForLogIn = async (req, res) => {
 
     if (!isMatch) {
       let attempts = await BlockedEmail.findOne({ email });
+      const nextExpiresAt = new Date(Date.now() + LOGIN_BLOCK_DURATION_MS);
+
+      if (
+        attempts &&
+        (!attempts.expiresAt || getRemainingSeconds(attempts.expiresAt) <= 0)
+      ) {
+        await BlockedEmail.deleteOne({ _id: attempts._id });
+        attempts = null;
+      }
 
       if (!attempts) {
-        attempts = await BlockedEmail.create({ email, count: 1 });
+        attempts = await BlockedEmail.create({
+          email,
+          count: 1,
+          expiresAt: nextExpiresAt,
+        });
       } else {
         attempts.count += 1;
-
-        if (attempts.count > 2) {
-          attempts.expiresAt = new Date(Date.now() + LOGIN_BLOCK_DURATION_MS);
-        }
+        attempts.expiresAt = nextExpiresAt;
 
         await attempts.save();
       }

@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const EmailOtp = require("../../models/auth/emailOtp.model");
 const TemporaryUser = require("../../models/auth/temporaryUser.model");
 const User = require("../../models/auth/user.model");
+const { isExpiredDate } = require("../../utils/auth/expiry.util");
 const ErrorHandler = require("../../utils/errorHandler.util");
 
 const otpVerify = async (req, res, next) => {
@@ -20,6 +21,11 @@ const otpVerify = async (req, res, next) => {
 
     if (!otpRecord) {
       return new ErrorHandler(400, "otp is invalid or expired").send(res);
+    }
+
+    if (isExpiredDate(otpRecord.expiresAt)) {
+      await EmailOtp.deleteOne({ _id: otpRecord._id });
+      return new ErrorHandler(410, "otp is invalid or expired").send(res);
     }
 
     const isValid = await otpRecord.compareOtp(otp);
@@ -50,6 +56,15 @@ const otpVerify = async (req, res, next) => {
         ).send(res);
       }
 
+      if (isExpiredDate(user.expiresAt)) {
+        await TemporaryUser.deleteOne({ _id: user._id });
+        await EmailOtp.deleteMany({ email, purpose });
+        return new ErrorHandler(
+          410,
+          "Signup session expired. Please try signing up again.",
+        ).send(res);
+      }
+
       req.user = user;
     }
 
@@ -67,6 +82,15 @@ const otpVerify = async (req, res, next) => {
       const tempUser = await TemporaryUser.findOne({ email });
 
       if (!tempUser) {
+        return new ErrorHandler(
+          410,
+          "Password reset session expired. Please request a new OTP.",
+        ).send(res);
+      }
+
+      if (isExpiredDate(tempUser.expiresAt)) {
+        await TemporaryUser.deleteOne({ _id: tempUser._id });
+        await EmailOtp.deleteMany({ email, purpose });
         return new ErrorHandler(
           410,
           "Password reset session expired. Please request a new OTP.",
