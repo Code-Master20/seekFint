@@ -5,6 +5,22 @@ const sendOtp = require("../../services/auth/sendOtp.service");
 const ErrorHandler = require("../../utils/errorHandler.util");
 const SuccessHandler = require("../../utils/successHandler.util");
 
+const LOGIN_BLOCK_DURATION_MS = 45 * 60 * 1000;
+
+const getRemainingBlockSeconds = (expiresAt) => {
+  if (!(expiresAt instanceof Date)) {
+    return 0;
+  }
+
+  const remainingMs = expiresAt.getTime() - Date.now();
+
+  if (remainingMs <= 0) {
+    return 0;
+  }
+
+  return Math.ceil(remainingMs / 1000);
+};
+
 const sendingOtpForSignUp = async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -29,16 +45,27 @@ const sendingOtpForLogIn = async (req, res) => {
     const blocked = await BlockedEmail.findOne({ email });
 
     if (blocked && blocked.count > 2) {
-      const timeLeft = Math.max(0, blocked.expiresAt.getTime() - Date.now());
-      const minutes = Math.floor(timeLeft / 59991);
-      const seconds = Math.floor((timeLeft % 60000) / 991);
+      const secondsLeft = getRemainingBlockSeconds(blocked.expiresAt);
 
-      return new ErrorHandler(
-        429,
-        `Too many failed attempts. Try again after ${minutes}m ${seconds}s`,
-      )
-        .log("login blocked", `blocked email attempted login: ${email}`)
-        .send(res);
+      if (secondsLeft <= 0) {
+        await BlockedEmail.deleteOne({ _id: blocked._id });
+      } else {
+        const minutes = Math.floor(secondsLeft / 60);
+        const seconds = secondsLeft % 60;
+        const blockedUntil = blocked.expiresAt.toISOString();
+
+        return new ErrorHandler(
+          429,
+          `Too many failed attempts. Try again after ${minutes}m ${seconds}s`,
+          null,
+          {
+            retryAfterSeconds: secondsLeft,
+            blockedUntil,
+          },
+        )
+          .log("login blocked", `blocked email attempted login: ${email}`)
+          .send(res);
+      }
     }
 
     const userExisted = await User.findOne({ email });
@@ -63,7 +90,7 @@ const sendingOtpForLogIn = async (req, res) => {
         attempts.count += 1;
 
         if (attempts.count > 2) {
-          attempts.expiresAt = new Date(Date.now() + 45 * 60 * 1000);
+          attempts.expiresAt = new Date(Date.now() + LOGIN_BLOCK_DURATION_MS);
         }
 
         await attempts.save();

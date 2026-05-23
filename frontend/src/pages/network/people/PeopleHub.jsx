@@ -612,9 +612,6 @@ export const PeopleHub = () => {
                         {person.profession ? (
                           <span>{formatDisplayValue(person.profession)}</span>
                         ) : null}
-                        {person.creator ? (
-                          <strong className={styles.creatorBadge}>creator</strong>
-                        ) : null}
                         {person.friendType ? (
                           <strong className={styles.creatorBadge}>
                             {person.friendType}

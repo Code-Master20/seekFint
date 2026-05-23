@@ -15,6 +15,35 @@ import globMe from "../../assets/globme.png";
 
 const BLOCKED_STORAGE_KEY = "login-block-countdown";
 
+const getBlockedCountdownFromUnlockAt = (unlockAt) => {
+  if (!Number.isFinite(unlockAt)) {
+    return null;
+  }
+
+  const secondsLeft = Math.ceil((unlockAt - Date.now()) / 1000);
+  return secondsLeft > 0 ? secondsLeft : null;
+};
+
+const getUnlockAtFromBlockResponse = (payload, fallbackMessage = "") => {
+  const blockedUntilValue = payload?.blockedUntil;
+  const retryAfterSeconds = Number(payload?.retryAfterSeconds);
+
+  if (blockedUntilValue) {
+    const parsedTime = new Date(blockedUntilValue).getTime();
+
+    if (Number.isFinite(parsedTime) && parsedTime > Date.now()) {
+      return parsedTime;
+    }
+  }
+
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return Date.now() + retryAfterSeconds * 1000;
+  }
+
+  const fallbackCountdown = parseBlockedCountdown(fallbackMessage);
+  return fallbackCountdown ? Date.now() + fallbackCountdown * 1000 : null;
+};
+
 const readStoredUser = () => {
   try {
     const rawValue = localStorage.getItem("user");
@@ -53,14 +82,41 @@ const parseBlockedCountdown = (message) => {
 };
 
 const readStoredBlockedCountdown = () => {
-  const storedTime = localStorage.getItem(BLOCKED_STORAGE_KEY);
+  try {
+    const storedTime = localStorage.getItem(BLOCKED_STORAGE_KEY);
 
-  if (!storedTime) {
+    if (!storedTime) {
+      return null;
+    }
+
+    const parsed = JSON.parse(storedTime);
+
+    if (typeof parsed === "number") {
+      const unlockAt = parsed > 0 ? Date.now() + parsed * 1000 : null;
+
+      if (unlockAt === null) {
+        localStorage.removeItem(BLOCKED_STORAGE_KEY);
+      }
+
+      return unlockAt;
+    }
+
+    if (parsed && typeof parsed === "object") {
+      const unlockAt = Number(parsed.unlockAt);
+      const isStillBlocked = getBlockedCountdownFromUnlockAt(unlockAt);
+
+      if (!isStillBlocked) {
+        localStorage.removeItem(BLOCKED_STORAGE_KEY);
+        return null;
+      }
+
+      return unlockAt;
+    }
+
+    return null;
+  } catch {
     return null;
   }
-
-  const parsed = Number(JSON.parse(storedTime));
-  return parsed > 0 ? parsed : null;
 };
 
 export const LogIn = () => {
@@ -74,6 +130,9 @@ export const LogIn = () => {
   const { errorMessage } = useSelector((state) => state.auth);
 
   const storedUser = readStoredUser();
+  const initialBlockedUntil = readStoredBlockedCountdown();
+  const initialBlockedCountdown =
+    getBlockedCountdownFromUnlockAt(initialBlockedUntil);
 
   const [clientCredentials, setClientCredentials] = useState({
     email: getStoredText(storedUser, "email"),
@@ -113,17 +172,18 @@ export const LogIn = () => {
   const dispatch = useDispatch();
   const [path, setPath] = useState(null);
   const [timerIdArr, setTimerIdArr] = useState([]);
-  const [countdown, setCountdown] = useState(() => readStoredBlockedCountdown());
-  const [disable, setDisable] = useState(() => readStoredBlockedCountdown() > 0);
+  const [blockedUntil, setBlockedUntil] = useState(initialBlockedUntil);
+  const [countdown, setCountdown] = useState(initialBlockedCountdown);
   const [tries, setTries] = useState(() => {
     const storedTries = localStorage.getItem("tryRemains");
-    return storedTries ? JSON.parse(storedTries) : 3;
-  });
+    if (!storedTries) {
+      return 3;
+    }
 
-  useEffect(() => {
-    if (countdown === null) return;
-    setDisable(countdown > 0);
-  }, [countdown]);
+    const parsedTries = JSON.parse(storedTries);
+    return initialBlockedCountdown === null && parsedTries <= 0 ? 3 : parsedTries;
+  });
+  const disable = countdown > 0;
 
   async function handleOnSubmit(event) {
     event.preventDefault();
@@ -162,17 +222,24 @@ export const LogIn = () => {
 
       if (typeof error === "string") {
         if (status === 429 || error.includes("Too many failed attempts")) {
-          const blockedCountdown = parseBlockedCountdown(error);
+          const nextBlockedUntil = getUnlockAtFromBlockResponse(
+            resultAction.payload?.data,
+            error,
+          );
+          const blockedCountdown =
+            getBlockedCountdownFromUnlockAt(nextBlockedUntil);
 
-          setDisable(true);
           setTries(0);
           setCountdown(blockedCountdown);
+          setBlockedUntil(nextBlockedUntil);
 
-          if (blockedCountdown) {
+          if (nextBlockedUntil) {
             localStorage.setItem(
               BLOCKED_STORAGE_KEY,
-              JSON.stringify(blockedCountdown),
+              JSON.stringify({ unlockAt: nextBlockedUntil }),
             );
+          } else {
+            localStorage.removeItem(BLOCKED_STORAGE_KEY);
           }
 
           toast.warn(error);
@@ -201,6 +268,9 @@ export const LogIn = () => {
 
     if (logInOtpReceived.fulfilled.match(resultAction)) {
       setLoading(false);
+      setBlockedUntil(null);
+      setCountdown(null);
+      localStorage.removeItem(BLOCKED_STORAGE_KEY);
       setClientCredentials({
         email: "",
         password: "",
@@ -258,37 +328,45 @@ export const LogIn = () => {
   }
 
   useEffect(() => {
-    if (countdown === null) return;
+    if (blockedUntil === null) return;
 
-    if (countdown === 0) {
-      setDisable(false);
-      setCountdown(null);
-      localStorage.removeItem(BLOCKED_STORAGE_KEY);
-      localStorage.removeItem("runCount");
-      runCountRef.current = 0;
-      localStorage.setItem("tryRemains", JSON.stringify(3));
-      setTries(3);
-      return;
-    }
+    const syncBlockedCountdown = () => {
+      const nextCountdown = getBlockedCountdownFromUnlockAt(blockedUntil);
 
-    const timer = setTimeout(() => {
-      setCountdown((prev) => {
-        if (prev === null) return null;
-
-        const nextValue = prev - 1;
-
-        if (nextValue > 0) {
-          localStorage.setItem(BLOCKED_STORAGE_KEY, JSON.stringify(nextValue));
-          return nextValue;
-        }
-
+      if (nextCountdown === null) {
+        setBlockedUntil(null);
+        setCountdown(null);
         localStorage.removeItem(BLOCKED_STORAGE_KEY);
-        return 0;
-      });
-    }, 1000);
+        localStorage.removeItem("runCount");
+        runCountRef.current = 0;
+        localStorage.setItem("tryRemains", JSON.stringify(3));
+        setTries(3);
+        return;
+      }
 
-    return () => clearTimeout(timer);
-  }, [countdown]);
+      setCountdown(nextCountdown);
+      localStorage.setItem(
+        BLOCKED_STORAGE_KEY,
+        JSON.stringify({ unlockAt: blockedUntil }),
+      );
+    };
+
+    syncBlockedCountdown();
+
+    const intervalId = window.setInterval(syncBlockedCountdown, 1000);
+    const syncOnWakeUp = () => {
+      syncBlockedCountdown();
+    };
+
+    window.addEventListener("focus", syncOnWakeUp);
+    document.addEventListener("visibilitychange", syncOnWakeUp);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", syncOnWakeUp);
+      document.removeEventListener("visibilitychange", syncOnWakeUp);
+    };
+  }, [blockedUntil]);
 
   const minutes = countdown !== null ? Math.floor(countdown / 60) : 0;
   const seconds = countdown !== null ? countdown % 60 : 0;

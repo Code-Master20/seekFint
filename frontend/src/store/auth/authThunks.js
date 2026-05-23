@@ -101,14 +101,16 @@ export const logInOtpReceived = createAsyncThunk(
         status: null,
         message: "",
         success: null,
+        data: null,
       };
 
-      const { message, success } = error.response.data;
+      const { message, success, data } = error.response.data;
       const { status } = error.response;
 
       brokenResponse.message = message;
       brokenResponse.success = success;
       brokenResponse.status = status;
+      brokenResponse.data = data;
 
       return thunkAPI.rejectWithValue(brokenResponse);
     }
@@ -161,8 +163,9 @@ export const resetPassViaOldPass = createAsyncThunk(
         status: null,
       };
 
-      const { message, success } = error.response?.data;
-      const { status } = error.response;
+      const responseData = error.response?.data || {};
+      const { message, success } = responseData;
+      const status = error.response?.status || null;
       brokenResponse.message = message;
       brokenResponse.success = success;
       brokenResponse.status = status;
@@ -188,8 +191,9 @@ export const resetPassOtpReceived = createAsyncThunk(
         status: null,
       };
 
-      const { message, success } = error.response?.data;
-      const { status } = error.response;
+      const responseData = error.response?.data || {};
+      const { message, success } = responseData;
+      const status = error.response?.status || null;
       brokenResponse.message = message;
       brokenResponse.success = success;
       brokenResponse.status = status;
@@ -216,8 +220,9 @@ export const otpVerifiedAndResetPassword = createAsyncThunk(
         id: null,
       };
 
-      const { message, success, id } = error.response?.data;
-      const { status } = error.response;
+      const responseData = error.response?.data || {};
+      const { message, success, id } = responseData;
+      const status = error.response?.status || null;
       brokenResponse.message = message;
       brokenResponse.success = success;
       brokenResponse.status = status;

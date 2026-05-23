@@ -1,9 +1,10 @@
-function ErrorHandler(statusCode, message, id = null) {
+function ErrorHandler(statusCode, message, id = null, data = null) {
   //constructor function
   this.statusCode = statusCode || 500;
   this.success = false;
   this.message = message || "Something went wrong";
   this.id = id;
+  this.data = data;
 }
 
 ErrorHandler.prototype.send = function (res) {
@@ -11,6 +12,7 @@ ErrorHandler.prototype.send = function (res) {
     success: this.success,
     message: this.message,
     id: this.id,
+    data: this.data,
   });
 };
 

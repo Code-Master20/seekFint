@@ -248,14 +248,6 @@ const mergeConnectionState = (currentProfile, payload) => {
   };
 };
 
-const getStoryClipMinimumSpan = (durationSeconds) => {
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    return 0.2;
-  }
-
-  return Math.min(1, Math.max(durationSeconds / 40, 0.2));
-};
-
 const shouldTrimStoryVideoClip = ({ durationSeconds, startSeconds, endSeconds }) => {
   if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
     return false;
@@ -1943,7 +1935,9 @@ export const Profile = () => {
   const profileSize = width < 768 ? 120 : 160;
   const isSmallScreen = width <= 640;
   const ownerCreatorEnabled = Boolean(profileUser.creator);
-  const creatorActive = Boolean(profileUser.creator);
+  const creatorActive = isOwner
+    ? ownerCreatorEnabled
+    : Boolean(profileUser.canSubscribe ?? profileUser.creator);
   const bioItems = listify(profileUser.bio);
   const locationItems = listify(profileUser.location);
   const talentItems = listify(profileUser.talent);
@@ -3334,7 +3328,7 @@ export const Profile = () => {
                   />
                 </button>
 
-                {creatorActive ? (
+                {isOwner && ownerCreatorEnabled ? (
                   <strong className={styles.creatorBadge}>channel</strong>
                 ) : null}
 
