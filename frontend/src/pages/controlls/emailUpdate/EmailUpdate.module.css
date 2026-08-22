@@ -1,0 +1,156 @@
+.panel {
+  width: 100%;
+  padding: 1.4rem;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(25, 50, 41, 0.1);
+  box-shadow: 0 18px 40px rgba(25, 50, 41, 0.06);
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.panelHeader p {
+  display: block;
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6a857a;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  color: #193229;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.field span {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #193229;
+}
+
+.field input {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(39, 66, 56, 0.15);
+  padding: 0.85rem 0.95rem;
+  background: #fffefb;
+  color: #193229;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.field input:focus {
+  border-color: rgba(31, 107, 82, 0.45);
+  box-shadow: 0 0 0 3px rgba(31, 107, 82, 0.1);
+}
+
+.primarySubmit,
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  padding: 0 1rem;
+  border-radius: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.primarySubmit {
+  border: 1px solid transparent;
+  background: #1f6b52;
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(31, 107, 82, 0.2);
+}
+
+.primarySubmit:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.primarySubmit:disabled,
+.secondaryAction:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.secondaryAction {
+  border: 1px solid rgba(37, 71, 59, 0.12);
+  background: #f3efe5;
+  color: #25473b;
+}
+
+.secondaryAction:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.noticeBox {
+  padding: 1rem;
+  border-radius: 18px;
+  background: #f6f3ea;
+  color: #496358;
+  line-height: 1.55;
+}
+
+.noticeBox strong {
+  color: #193229;
+}
+
+.noticeBox p {
+  margin: 0.3rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.formFooter {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.formFooter .primarySubmit {
+  flex: 1 1 240px;
+}
+
+@media (max-width: 699px) {
+  .panel {
+    padding: 1rem;
+  }
+
+  .formFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .formFooter button {
+    width: 100%;
+  }
+}

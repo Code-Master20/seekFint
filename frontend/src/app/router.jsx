@@ -12,6 +12,7 @@ import { SignUp } from "../pages/auth/SignUp.jsx";
 import { PrivateRoute } from "../routes/auth/PrivateRoute.jsx";
 import { PublicRoute } from "../routes/auth/PublicRoute.jsx";
 import { Dashboard } from "../pages/dashboard/Dashboard.jsx";
+import { EmailUpdate } from "../pages/controlls/emailUpdate/EmailUpdate.jsx";
 import { HomeFeed } from "../pages/feeds/home/HomeFeed.jsx";
 import { PhotoFeed } from "../pages/feeds/photo/PhotoFeed.jsx";
 import { PostFeed } from "../pages/feeds/post/PostFeed.jsx";
@@ -44,14 +45,19 @@ export const router = createBrowserRouter(
           </PublicRoute>
         }
       />
-      <Route
-        path="reset-password"
-        element={<EditPassword />}
+      <Route path="reset-password" element={<EditPassword />} />
+      <Route path="verify-otp" element={<OtpVerification />} />
+
+      <Route 
+      path="emailupdate"
+      element={
+        <PrivateRoute>
+          <EmailUpdate/>
+        </PrivateRoute>
+      }
       />
-      <Route
-        path="verify-otp"
-        element={<OtpVerification />}
-      />
+      
+
       <Route
         path="dashboard"
         element={
@@ -68,22 +74,10 @@ export const router = createBrowserRouter(
           </PrivateRoute>
         }
       />
-      <Route
-        path="home-feed"
-        element={<HomeFeed />}
-      />
-      <Route
-        path="video-feed"
-        element={<VideoFeed />}
-      />
-      <Route
-        path="photo-feed"
-        element={<PhotoFeed />}
-      />
-      <Route
-        path="post-feed"
-        element={<PostFeed />}
-      />
+      <Route path="home-feed" element={<HomeFeed />} />
+      <Route path="video-feed" element={<VideoFeed />} />
+      <Route path="photo-feed" element={<PhotoFeed />} />
+      <Route path="post-feed" element={<PostFeed />} />
       <Route path="games/:gameKey" element={<GameArena />} />
       <Route path="posts/:postId" element={<PublicPostDetail />} />
       <Route
@@ -110,10 +104,7 @@ export const router = createBrowserRouter(
           </PrivateRoute>
         }
       />
-      <Route
-        path="profile/:userId"
-        element={<Profile />}
-      />
+      <Route path="profile/:userId" element={<Profile />} />
       <Route
         path="profile/stories/:storyEntryId"
         element={
