@@ -45,5 +45,5 @@ createRoot(document.getElementById("root")).render(
       progressClassName="appToastProgress"
       closeButton={false}
     />
-  </Provider>,
+  </Provider>
 );

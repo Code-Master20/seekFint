@@ -6,13 +6,19 @@ export const fetchNotifications = createAsyncThunk(
   async (params = {}, thunkAPI) => {
     try {
       const response = await api.get("/network/notifications", {
-        params,
+        params: {
+          page: params.page ?? 1,
+          limit: params.limit ?? 30,
+        },
       });
+
       return response.data;
     } catch (error) {
       return thunkAPI.rejectWithValue({
         status: error.response?.status,
-        message: error.response?.data?.message || "Could not fetch notifications",
+        message:
+          error.response?.data?.message ||
+          "Could not fetch notifications",
       });
     }
   },

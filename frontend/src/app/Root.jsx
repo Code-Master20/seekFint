@@ -22,7 +22,6 @@ const shouldShowGuestHeader = (pathname) => {
   if (/^\/games\/[^/]+$/.test(pathname)) {
     return true;
   }
-
   return /^\/profile\/[^/]+$/.test(pathname);
 };
 

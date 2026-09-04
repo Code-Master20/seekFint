@@ -18,6 +18,7 @@ export const checkMe = createAsyncThunk("auth/isMe", async (_, thunkAPI) => {
       brokenResponse.status = status;
       brokenResponse.message = message;
       brokenResponse.success = success;
+      
     }
     if (error.response.status === 500) {
       const backendBrokenResponse = error.response.data;

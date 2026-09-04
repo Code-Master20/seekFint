@@ -14,6 +14,7 @@ const SWIPE_DELETE_THRESHOLD = 96;
 const SWIPE_MAX_OFFSET = 132;
 const NOTIFICATIONS_CACHE_TTL_MS = 60 * 1000;
 const notificationsPageCache = new Map();
+const NOTIFICATIONS_PAGE_SIZE = 30;
 
 const getCachedNotificationsEntry = (ownerId) =>
   ownerId ? notificationsPageCache.get(`${ownerId}`) || null : null;
@@ -32,7 +33,8 @@ const formatDisplayValue = (value) => {
 };
 
 const getNotificationTarget = (notification) =>
-  notification.link || (notification.actor?._id ? `/profile/${notification.actor._id}` : "");
+  notification.link ||
+  (notification.actor?._id ? `/profile/${notification.actor._id}` : "");
 
 const getNotificationActionLabel = (notification) =>
   notification.type === "story_added" && notification.link
@@ -41,15 +43,21 @@ const getNotificationActionLabel = (notification) =>
       ? "Open messages"
       : notification.type === "post_like" && notification.link
         ? "Open post"
-      : "View profile";
+        : "View profile";
 
 export const NotificationCenter = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const { items, loading, deletingId, errorMessage } = useSelector(
-    (state) => state.notifications,
-  );
+  const {
+    items,
+    loading,
+    loadingMore,
+    deletingId,
+    errorMessage,
+    page,
+    hasMore,
+  } = useSelector((state) => state.notifications);
   const cacheKey = user?._id || "";
   const cachedEntry = getCachedNotificationsEntry(cacheKey);
   const [searchText, setSearchText] = useState("");
@@ -68,6 +76,7 @@ export const NotificationCenter = () => {
     offsetX: 0,
     suppressClickFor: "",
   });
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     const hydrateNotifications = async () => {
@@ -77,9 +86,22 @@ export const NotificationCenter = () => {
         (!activeCacheEntry || isNotificationsCacheStale(activeCacheEntry));
 
       if (shouldFetch) {
-        await dispatch(fetchNotifications({ limit: 100 }));
-      } else if (activeCacheEntry && isNotificationsCacheStale(activeCacheEntry)) {
-        await dispatch(fetchNotifications({ limit: 100 }));
+        await dispatch(
+          fetchNotifications({
+            page: 1,
+            limit: NOTIFICATIONS_PAGE_SIZE,
+          }),
+        );
+      } else if (
+        activeCacheEntry &&
+        isNotificationsCacheStale(activeCacheEntry)
+      ) {
+        await dispatch(
+          fetchNotifications({
+            page: 1,
+            limit: NOTIFICATIONS_PAGE_SIZE,
+          }),
+        );
       }
 
       await dispatch(markNotificationsRead());
@@ -89,6 +111,42 @@ export const NotificationCenter = () => {
       hydrateNotifications();
     }
   }, [cacheKey, dispatch]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+
+    if (!target || !hasMore || loading || loadingMore) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0];
+
+        if (!firstEntry.isIntersecting) {
+          return;
+        }
+
+        dispatch(
+          fetchNotifications({
+            page: page + 1,
+            limit: NOTIFICATIONS_PAGE_SIZE,
+          }),
+        );
+      },
+      {
+        root: null,
+        rootMargin: "300px",
+        threshold: 0,
+      },
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [dispatch, page, hasMore, loading, loadingMore]);
 
   useEffect(() => {
     if (!cacheKey) {
@@ -143,7 +201,9 @@ export const NotificationCenter = () => {
       const firstDate = new Date(firstItem.createdAt).getTime();
       const secondDate = new Date(secondItem.createdAt).getTime();
 
-      return sortOrder === "oldest" ? firstDate - secondDate : secondDate - firstDate;
+      return sortOrder === "oldest"
+        ? firstDate - secondDate
+        : secondDate - firstDate;
     });
 
   const handleDeleteNotification = async (notificationId) => {
@@ -170,7 +230,9 @@ export const NotificationCenter = () => {
     };
 
     setActiveSwipe((current) =>
-      current.notificationId === notificationId ? current : { notificationId, offsetX: 0 },
+      current.notificationId === notificationId
+        ? current
+        : { notificationId, offsetX: 0 },
     );
   };
 
@@ -242,19 +304,33 @@ export const NotificationCenter = () => {
 
         {notificationsInitialLoading ? (
           <>
-            <section className={styles.toolbarSkeleton} aria-label="Loading notification controls">
+            <section
+              className={styles.toolbarSkeleton}
+              aria-label="Loading notification controls"
+            >
               <div className={styles.fieldSkeletonStack}>
-                <span className={`${styles.fieldLabelSkeleton} ${styles.skeletonBlock}`} />
-                <div className={`${styles.fieldSkeleton} ${styles.skeletonBlock}`} />
+                <span
+                  className={`${styles.fieldLabelSkeleton} ${styles.skeletonBlock}`}
+                />
+                <div
+                  className={`${styles.fieldSkeleton} ${styles.skeletonBlock}`}
+                />
               </div>
 
               <div className={styles.fieldSkeletonStack}>
-                <span className={`${styles.fieldLabelSkeleton} ${styles.skeletonBlock}`} />
-                <div className={`${styles.fieldSkeletonShort} ${styles.skeletonBlock}`} />
+                <span
+                  className={`${styles.fieldLabelSkeleton} ${styles.skeletonBlock}`}
+                />
+                <div
+                  className={`${styles.fieldSkeletonShort} ${styles.skeletonBlock}`}
+                />
               </div>
             </section>
 
-            <section className={styles.notificationList} aria-label="Loading notifications">
+            <section
+              className={styles.notificationList}
+              aria-label="Loading notifications"
+            >
               {Array.from({ length: 4 }, (_, index) => (
                 <article
                   key={`notification-skeleton-${index}`}
@@ -263,7 +339,9 @@ export const NotificationCenter = () => {
                 >
                   <div className={styles.notificationCard}>
                     <div className={styles.notificationMain}>
-                      <div className={`${styles.avatarSkeleton} ${styles.skeletonBlock}`} />
+                      <div
+                        className={`${styles.avatarSkeleton} ${styles.skeletonBlock}`}
+                      />
                       <div className={styles.notificationBodySkeleton}>
                         <div className={styles.notificationTopSkeleton}>
                           <div
@@ -283,7 +361,9 @@ export const NotificationCenter = () => {
                     </div>
 
                     <div className={styles.notificationActions}>
-                      <div className={`${styles.actionSkeleton} ${styles.skeletonBlock}`} />
+                      <div
+                        className={`${styles.actionSkeleton} ${styles.skeletonBlock}`}
+                      />
                     </div>
                   </div>
                 </article>
@@ -345,7 +425,9 @@ export const NotificationCenter = () => {
                   className={styles.swipeDeleteAction}
                   onClick={() => handleDeleteNotification(notification._id)}
                   disabled={deletingId === notification._id}
-                  aria-label={`Delete notification from ${notification.actor?.username || "user"}`}
+                  aria-label={`Delete notification from ${
+                    notification.actor?.username || "user"
+                  }`}
                 >
                   {deletingId === notification._id ? "Removing..." : "Delete"}
                 </button>
@@ -362,7 +444,9 @@ export const NotificationCenter = () => {
                   <button
                     type="button"
                     className={styles.notificationMain}
-                    onClick={(event) => handleNotificationNavigation(notification, event)}
+                    onClick={(event) =>
+                      handleNotificationNavigation(notification, event)
+                    }
                     disabled={!getNotificationTarget(notification)}
                   >
                     <img
@@ -370,18 +454,26 @@ export const NotificationCenter = () => {
                       alt={notification.actor?.username || "user"}
                       className={styles.avatar}
                     />
+
                     <div className={styles.notificationBody}>
                       <div className={styles.notificationTop}>
                         <h2>{notification.message}</h2>
-                        <span>{new Date(notification.createdAt).toLocaleString()}</span>
+
+                        <span>
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </span>
                       </div>
+
                       {notification.actor?.profession ? (
                         <p className={styles.actorMeta}>
                           {formatDisplayValue(notification.actor.profession)}
                         </p>
                       ) : null}
+
                       {notification.actor?.email ? (
-                        <p className={styles.actorMeta}>{notification.actor.email}</p>
+                        <p className={styles.actorMeta}>
+                          {notification.actor.email}
+                        </p>
                       ) : null}
                     </div>
                   </button>
@@ -390,16 +482,41 @@ export const NotificationCenter = () => {
                     <button
                       type="button"
                       className={styles.viewBtn}
-                      onClick={(event) => handleNotificationNavigation(notification, event)}
+                      onClick={(event) =>
+                        handleNotificationNavigation(notification, event)
+                      }
                       disabled={!getNotificationTarget(notification)}
                     >
                       {getNotificationActionLabel(notification)}
                     </button>
                   </div>
                 </div>
+
                 <span className={styles.swipeHint}>Swipe left to delete</span>
               </article>
             ))}
+
+            {/* Infinite-scroll trigger */}
+            {hasMore ? (
+              <div
+                ref={loadMoreRef}
+                aria-hidden="true"
+                style={{
+                  minHeight: "1px",
+                }}
+              />
+            ) : null}
+
+            {loadingMore ? (
+              <div
+                style={{
+                  padding: "16px",
+                  textAlign: "center",
+                }}
+              >
+                Loading more notifications...
+              </div>
+            ) : null}
           </section>
         )}
       </section>
