@@ -159,15 +159,45 @@ const getOwnerNetworkHub = async (req, res) => {
 
 const getNotifications = async (req, res) => {
   try {
-    const requestedLimit = Number.parseInt(`${req.query.limit ?? "30"}`, 10);
+    const requestedLimit = Number.parseInt(
+      `${req.query.limit ?? "30"}`,
+      10,
+    );
+
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(Math.max(requestedLimit, 1), 100)
       : 30;
 
-    const notifications = await Notification.find({ user: req.user._id })
-      .populate("actor", "username avatar profession profileVisibility")
+    const requestedPage = Number.parseInt(
+      `${req.query.page ?? "1"}`,
+      10,
+    );
+
+    const page = Number.isFinite(requestedPage)
+      ? Math.max(requestedPage, 1)
+      : 1;
+
+    const skip = (page - 1) * limit;
+
+    const notifications = await Notification.find({
+      user: req.user._id,
+    })
+      .populate(
+        "actor",
+        "username avatar profession profileVisibility",
+      )
       .sort({ createdAt: -1 })
+      .skip(skip)
       .limit(limit);
+
+    // Count ALL unread notifications belonging to the receiver.
+    const unreadCount = await Notification.countDocuments({
+      user: req.user._id,
+      read: false,
+    });
+
+    // If we received fewer than `limit`, there are no more pages.
+    const hasMore = notifications.length === limit;
 
     const normalizedNotifications = notifications.map((notification) => ({
       _id: notification._id,
@@ -177,15 +207,18 @@ const getNotifications = async (req, res) => {
       read: notification.read,
       createdAt: notification.createdAt,
       actor: notification.actor
-        ? toPublicUser(notification.actor, { viewerId: req.user._id })
+        ? toPublicUser(notification.actor, {
+            viewerId: req.user._id,
+          })
         : null,
     }));
-
-    const unreadCount = notifications.filter((item) => !item.read).length;
 
     return new SuccessHandler(200, "Notifications", {
       items: normalizedNotifications,
       unreadCount,
+      page,
+      limit,
+      hasMore,
     }).send(res);
   } catch (error) {
     return new ErrorHandler(500, "Could not fetch notifications")
