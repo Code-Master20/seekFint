@@ -1,5 +1,5 @@
 import "./Root.css";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { HeaderOne } from "../components/layout/Header/HeaderOne";
 import { HeaderTwo } from "../components/layout/Header/HeaderTwo";
@@ -29,7 +29,6 @@ export const Root = () => {
   const dispatch = useDispatch();
   const { checkingAuth, isAuthenticated } = useSelector((state) => state.auth);
   const location = useLocation();
-  const headerStackRef = useRef(null);
 
   useEffect(() => {
     dispatch(checkMe());
@@ -57,46 +56,18 @@ export const Root = () => {
       return () => {
         clearInterval(timer);
         window.removeEventListener("focus", refreshNotifications);
-        document.removeEventListener("visibilitychange", handleVisibilityRefresh);
+        document.removeEventListener(
+          "visibilitychange",
+          handleVisibilityRefresh,
+        );
       };
     }
   }, [dispatch, isAuthenticated]);
 
-  useEffect(() => {
-    const rootStyle = document.documentElement.style;
-    const headerElement = headerStackRef.current;
-
-    if (!headerElement) {
-      rootStyle.setProperty("--app-header-offset", "0px");
-      return undefined;
-    }
-
-    const updateHeaderOffset = () => {
-      rootStyle.setProperty("--app-header-offset", `${headerElement.offsetHeight}px`);
-    };
-
-    updateHeaderOffset();
-
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => {
-            updateHeaderOffset();
-          })
-        : null;
-
-    resizeObserver?.observe(headerElement);
-    window.addEventListener("resize", updateHeaderOffset);
-
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener("resize", updateHeaderOffset);
-    };
-  }, [isAuthenticated, location.pathname]);
-
   return (
     <div className="root-container">
       {isAuthenticated && (
-        <div className="app-header-stack" ref={headerStackRef}>
+        <div className="app-header-stack">
           <div className="primary-header-shell">
             <HeaderOne />
           </div>
@@ -106,7 +77,7 @@ export const Root = () => {
       {!isAuthenticated &&
       (!checkingAuth || shouldShowGuestHeader(location.pathname)) &&
       shouldShowGuestHeader(location.pathname) ? (
-        <div className="app-header-stack" ref={headerStackRef}>
+        <div className="app-header-stack">
           <PublicSiteHeader />
         </div>
       ) : null}
